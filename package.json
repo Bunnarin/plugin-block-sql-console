@@ -8,5 +8,15 @@
     "@nocobase/client-v2": "2.x",
     "@nocobase/server": "2.x",
     "@nocobase/test": "2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bunnarin/plugin-block-sql-console"
   }
 }
