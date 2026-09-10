@@ -5,6 +5,24 @@ import { Alert, Button, Form, Input, Modal, Space, Table, Tag, Tooltip, Typograp
 import { CopyOutlined, PlayCircleOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons';
 
 // ─────────────────────────────────────────────
+// Bind-variable helpers
+// ─────────────────────────────────────────────
+
+// Matches $name or :name (but ignores `::type` casts) and extracts the identifier
+const extractBindKeys = (text: string): string[] => {
+  const keys = new Set<string>();
+  const regex = /(?<!:):([a-zA-Z0-9_]+)|\$([a-zA-Z0-9_]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    keys.add(match[1] ?? match[2]);
+  }
+  return Array.from(keys);
+};
+
+// Converts :name -> $name in-place, leaving existing $name and :: casts untouched
+const normalizeBindSyntax = (text: string): string => text.replace(/(?<!:):([a-zA-Z0-9_]+)/g, '$$$1');
+
+// ─────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────
 
@@ -30,8 +48,8 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
   const [affectedCount, setAffectedCount] = useState<number | null>(null);
   const [pendingSql, setPendingSql] = useState<string | null>(null);
 
-  // Extract variables starting with $ (e.g., $status, $minAge) from the free-form SQL
-  const bindKeys = Array.from(new Set(Array.from(sql.matchAll(/\$([a-zA-Z0-9_]+)/g)).map((m) => m[1])));
+  // Extract bind variables written as $status or :status from the free-form SQL
+  const bindKeys = extractBindKeys(sql);
 
   const getCountQuery = (sqlText: string): string | null => {
     const trimmed = sqlText.trim().replace(/\s+/g, ' ');
@@ -71,7 +89,7 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
         const res = await api.request({
           url: 'flowSql:run',
           method: 'POST',
-          data: { sql: sqlToExecute, type: 'selectRows', bind: bindValues },
+          data: { sql: normalizeBindSyntax(sqlToExecute), type: 'selectRows', bind: bindValues },
         });
         applyResults(res.data?.data);
       } catch (error: unknown) {
@@ -99,7 +117,7 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
           const res = await api.request({
             url: 'flowSql:run',
             method: 'POST',
-            data: { sql: countQuery, type: 'selectVar', bind: bindValues },
+            data: { sql: normalizeBindSyntax(countQuery), type: 'selectVar', bind: bindValues },
           });
           setAffectedCount(Number(res.data?.data) ?? 0);
         } catch {
@@ -153,7 +171,7 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
         </Button>
         {results.length > 0 && (
           <Button icon={<CopyOutlined />} onClick={() => copyToClipboard(JSON.stringify(results, null, 2))}>
-            Copy JSON
+            Copy JSON ({results.length} rows)
           </Button>
         )}
       </Space>
@@ -203,7 +221,7 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
  */
 const TemplateSQLConsole: React.FC<{ blockUid: string; templateSql: string }> = ({ blockUid, templateSql }) => {
   const api = useAPIClient();
-  const bindKeys = Array.from(new Set(Array.from(templateSql.matchAll(/\$([a-zA-Z0-9_]+)/g)).map((m) => m[1])));
+  const bindKeys = extractBindKeys(templateSql);
   const [bindValues, setBindValues] = useState<Record<string, string>>({});
   const [results, setResults] = useState<Record<string, unknown>[]>([]);
   const [columns, setColumns] = useState<any[]>([]);
@@ -281,7 +299,7 @@ const TemplateSQLConsole: React.FC<{ blockUid: string; templateSql: string }> = 
         </Button>
         {results.length > 0 && (
           <Button icon={<CopyOutlined />} onClick={() => copyToClipboard(JSON.stringify(results, null, 2))}>
-            Copy JSON
+            Copy JSON ({results.length} rows)
           </Button>
         )}
       </Space>
@@ -353,7 +371,7 @@ SQLConsoleBlockModel.registerFlow({
           'x-decorator': 'FormItem',
           title: tExpr('SQL Template'),
           description: tExpr(
-            'Use $paramName for user-supplied bind parameters. e.g. SELECT * FROM users WHERE status = $status',
+            'Use $paramName or :paramName for user-supplied bind parameters. e.g. SELECT * FROM users WHERE status = $status',
           ),
           'x-component-props': {
             style: { fontFamily: 'monospace', minHeight: 120 },
@@ -376,18 +394,20 @@ SQLConsoleBlockModel.registerFlow({
         };
       },
       async handler(ctx, params) {
+        const normalizedSql = normalizeBindSyntax(params.templateSql ?? '');
+
         ctx.model.setProps('allowNormalUser', params.allowNormalUser);
-        ctx.model.setProps('templateSql', params.templateSql ?? '');
+        ctx.model.setProps('templateSql', normalizedSql);
 
         // If "allow normal user" is enabled and a template SQL was provided, save it
-        if (params.allowNormalUser && params.templateSql) {
+        if (params.allowNormalUser && normalizedSql) {
           try {
             await ctx.api.request({
               url: 'flowSql:save',
               method: 'POST',
               data: {
                 uid: ctx.model.uid,
-                sql: params.templateSql,
+                sql: normalizedSql,
               },
             });
           } catch (error: unknown) {
