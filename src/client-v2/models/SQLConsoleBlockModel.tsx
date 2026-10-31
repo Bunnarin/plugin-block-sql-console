@@ -16,7 +16,7 @@ const SQLConsole = observer((props: any) => {
 
   const getCountQuery = (sqlText: string): string | null => {
     const trimmed = sqlText.trim().replace(/\s+/g, ' ');
-    
+
     // Check for UPDATE
     const updateMatch = trimmed.match(/^UPDATE\s+([a-zA-Z0-9_"]+)\s+SET\s+(.*?)(\s+WHERE\s+.*)?$/i);
     if (updateMatch) {
@@ -24,7 +24,7 @@ const SQLConsole = observer((props: any) => {
       const whereClause = updateMatch[3] || '';
       return `SELECT count(*) as count FROM ${tableName}${whereClause}`;
     }
-    
+
     // Check for DELETE
     const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+([a-zA-Z0-9_"]+)(\s+WHERE\s+.*)?$/i);
     if (deleteMatch) {
@@ -32,7 +32,7 @@ const SQLConsole = observer((props: any) => {
       const whereClause = deleteMatch[2] || '';
       return `SELECT count(*) as count FROM ${tableName}${whereClause}`;
     }
-    
+
     return null;
   };
 
@@ -90,7 +90,7 @@ const SQLConsole = observer((props: any) => {
               type: 'selectVar',
             },
           });
-          
+
           setAffectedCount(Number(res.data?.data) || 0);
           setPendingSql(sql);
           setConfirmModalVisible(true);
@@ -129,9 +129,9 @@ const SQLConsole = observer((props: any) => {
         />
       </div>
       <div>
-        <Button 
-          type="primary" 
-          icon={<PlayCircleOutlined />} 
+        <Button
+          type="primary"
+          icon={<PlayCircleOutlined />}
           onClick={handleRun}
           loading={loading}
         >
@@ -139,10 +139,14 @@ const SQLConsole = observer((props: any) => {
         </Button>
       </div>
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <Table 
-          columns={columns} 
-          dataSource={results.map((row, i) => ({ ...row, key: i }))} 
-          pagination={false}
+        <Table
+          columns={columns}
+          dataSource={results.map((row, i) => ({ ...row, key: i }))}
+          pagination={{
+            showSizeChanger: true,
+            defaultPageSize: 100,
+            hideOnSinglePage: true
+          }}
           size="small"
           scroll={{ x: 'max-content' }}
         />

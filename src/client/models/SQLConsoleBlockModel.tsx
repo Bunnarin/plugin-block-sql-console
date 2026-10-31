@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BlockModel, useAPIClient } from '@nocobase/client';
 import { observer, tExpr } from '@nocobase/flow-engine';
-import { Alert, Button, Form, Input, Modal, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
-import { CopyOutlined, PlayCircleOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message } from 'antd';
+import { CopyOutlined, DownloadOutlined, PlayCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 
 // ─────────────────────────────────────────────
 // Bind-variable helpers
@@ -11,7 +12,7 @@ import { CopyOutlined, PlayCircleOutlined, SaveOutlined, WarningOutlined } from 
 // Matches $name or :name (but ignores `::type` casts) and extracts the identifier
 const extractBindKeys = (text: string): string[] => {
   const keys = new Set<string>();
-  const regex = /(?<!:):([a-zA-Z0-9_]+)|\$([a-zA-Z0-9_]+)/g;
+  const regex = /(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)|\$([a-zA-Z_][a-zA-Z0-9_]*)/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
     keys.add(match[1] ?? match[2]);
@@ -20,7 +21,7 @@ const extractBindKeys = (text: string): string[] => {
 };
 
 // Converts :name -> $name in-place, leaving existing $name and :: casts untouched
-const normalizeBindSyntax = (text: string): string => text.replace(/(?<!:):([a-zA-Z0-9_]+)/g, '$$$1');
+const normalizeBindSyntax = (text: string): string => text.replace(/(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g, '$$$1');
 
 // ─────────────────────────────────────────────
 // Sub-components
@@ -31,6 +32,19 @@ const copyToClipboard = (text: string) => {
     .writeText(text)
     .then(() => message.success('Copied to clipboard'))
     .catch((err) => message.error('Failed to copy: ' + err));
+};
+
+const downloadToExcel = (data: Record<string, unknown>[], filename = 'export') => {
+  const ws = XLSX.utils.json_to_sheet(
+    data.map((row) =>
+      Object.fromEntries(
+        Object.entries(row).map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : v]),
+      ),
+    ),
+  );
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, `${filename}.xlsx`);
 };
 
 /**
@@ -169,17 +183,22 @@ const AdminSQLConsole: React.FC<{ blockUid: string }> = ({ blockUid }) => {
         <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun} loading={loading}>
           Run SQL
         </Button>
-        {results.length > 0 && (
+        {results.length > 0 && (<>
           <Button icon={<CopyOutlined />} onClick={() => copyToClipboard(JSON.stringify(results, null, 2))}>
             Copy JSON ({results.length} rows)
           </Button>
-        )}
+          <Button icon={<DownloadOutlined />} onClick={() => downloadToExcel(results, 'sql-export')}>Download Excel ({results.length} rows)</Button>
+        </>)}
       </Space>
       {columns.length > 0 && (
         <Table
           columns={columns}
           dataSource={results.map((row, i) => ({ ...row, key: i }))}
-          pagination={false}
+          pagination={{
+            showSizeChanger: true,
+            defaultPageSize: 100,
+            hideOnSinglePage: true
+          }}
           size="small"
           scroll={{ x: 'max-content' }}
         />
@@ -297,17 +316,24 @@ const TemplateSQLConsole: React.FC<{ blockUid: string; templateSql: string }> = 
         <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun} loading={loading}>
           Run SQL
         </Button>
-        {results.length > 0 && (
+        {results.length > 0 && (<>
           <Button icon={<CopyOutlined />} onClick={() => copyToClipboard(JSON.stringify(results, null, 2))}>
             Copy JSON ({results.length} rows)
           </Button>
-        )}
+          <Button icon={<DownloadOutlined />} onClick={() => downloadToExcel(results, 'sql-export')}>
+            Download Excel ({results.length} rows)
+          </Button>
+        </>)}
       </Space>
       {columns.length > 0 && (
         <Table
           columns={columns}
           dataSource={results.map((row, i) => ({ ...row, key: i }))}
-          pagination={false}
+          pagination={{
+            showSizeChanger: true,
+            defaultPageSize: 100,
+            hideOnSinglePage: true
+          }}
           size="small"
           scroll={{ x: 'max-content' }}
         />
