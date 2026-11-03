@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BlockModel, useAPIClient } from '@nocobase/client';
 import { observer, tExpr } from '@nocobase/flow-engine';
-import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, Modal, Space, Table, Tag, Typography, message, Collapse } from 'antd';
 import { CopyOutlined, DownloadOutlined, PlayCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 
@@ -293,10 +293,20 @@ const TemplateSQLConsole: React.FC<{ blockUid: string; templateSql: string }> = 
 
   return (
     <Space direction="vertical" style={{ width: '100%', display: 'flex' }}>
-      <Typography.Title level={5}>SQL Template</Typography.Title>
-      <pre style={{ padding: 12, background: '#f5f5f5', borderRadius: 4, margin: 0, fontFamily: 'monospace' }}>
-        {templateSql}
-      </pre>
+      <Collapse
+        defaultActiveKey={[]} // Empty array means collapsed by default
+        items={[
+          {
+            key: 'sql-template',
+            label: <Typography.Title level={5} style={{ margin: 0 }}>SQL Template</Typography.Title>,
+            children: (
+              <pre style={{ padding: 12, background: '#f5f5f5', borderRadius: 4, margin: 0, fontFamily: 'monospace', overflowX: 'auto' }}>
+                {templateSql}
+              </pre>
+            ),
+          },
+        ]}
+      />
 
       {bindKeys.length > 0 && (
         <Form layout="inline" style={{ flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
