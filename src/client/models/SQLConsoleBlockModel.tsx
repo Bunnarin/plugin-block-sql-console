@@ -427,6 +427,7 @@ SQLConsoleBlockModel.registerFlow({
         return {
           allowNormalUser: ctx.model.props.allowNormalUser ?? false,
           templateSql: ctx.model.props.templateSql ?? '',
+          new: true
         };
       },
       async handler(ctx, params) {
@@ -436,19 +437,15 @@ SQLConsoleBlockModel.registerFlow({
         ctx.model.setProps('templateSql', normalizedSql);
 
         // If "allow normal user" is enabled and a template SQL was provided, save it
-        if (params.allowNormalUser && normalizedSql) {
-          try {
-            await ctx.api.request({
-              url: 'flowSql:save',
-              method: 'POST',
-              data: {
-                uid: ctx.model.uid,
-                sql: normalizedSql,
-              },
-            });
-          } catch (error: unknown) {
-            console.error('[SQLConsole] Failed to save SQL template:', error);
-          }
+        if (params.allowNormalUser && normalizedSql && !params.templateSql) {
+          await ctx.request({
+            url: 'flowSql:save',
+            method: 'POST',
+            data: {
+              uid: ctx.model.uid,
+              sql: normalizedSql,
+            },
+          });
         }
       },
     },

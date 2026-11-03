@@ -1,6 +1,6 @@
 {
   "name": "@bunnarin/plugin-block-sql-console",
-  "version": "2.1.34",
+  "version": "2.1.35",
   "main": "dist/server/index.js",
   "dependencies": {},
   "peerDependencies": {
